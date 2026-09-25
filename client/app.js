@@ -1,4 +1,4 @@
-
+const API_BASE_URL = "https://villagemart-47ah.onrender.com";
 // ==========================================
 // 1. FIREBASE SETUP & AUTHENTICATION
 // ==========================================
@@ -350,12 +350,13 @@ window.submitOrder = async function() {
     landmark: landmark
   };
 
-  try {
-    const response = await fetch('http://localhost:5000/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderPayload)
-    });
+  // ✅ UPDATED CODE (pointing to live Render server):
+try {
+  const response = await fetch(`${API_BASE_URL}/api/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderPayload)
+  });
 
     const data = await response.json();
     if (data.success) {
