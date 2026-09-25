@@ -6,7 +6,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/fireba
 import { 
   getAuth, 
   RecaptchaVerifier, 
-  signInWithPhoneNumber 
+  signInWithPhoneNumber,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -22,6 +24,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 let confirmationResult;
+
+window.loginWithGoogle = async function() {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // Save details to localStorage
+    localStorage.setItem('userPhone', user.phoneNumber || user.email);
+    localStorage.setItem('userName', user.displayName || 'Google User');
+
+    window.closeModal();
+    alert(`Welcome ${user.displayName || 'User'}! Logged in with Google.`);
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    alert('Google Sign-In failed: ' + error.message);
+  }
+};
 
 // DOM Content Loaded Handler
 window.addEventListener('DOMContentLoaded', () => {
