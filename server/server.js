@@ -1,13 +1,8 @@
-const express = require('express');
-const cors = require('cors');
+
 const fetch = require('node-fetch');
 const twilio = require('twilio');
 require('dotenv').config();
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
 
 const DELIVERY_CHARGE = 7;
 
@@ -99,6 +94,43 @@ ${itemsList}
     console.error('Telegram alert failed:', err.message);
   }
 }
+// server/server.js
+const express = require('express');
+const cors = require('cors');
+const db = require('./config/db');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// 1. Route to get all products from MySQL
+app.get('/api/products', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM products');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Route to toggle Out of Stock status
+app.patch('/api/products/:id/stock-status', async (req, res) => {
+  const { id } = req.params;
+  const { is_out_of_stock } = req.body;
+
+  try {
+    await db.query(
+      'UPDATE products SET is_out_of_stock = ? WHERE id = ?',
+      [is_out_of_stock ? 1 : 0, id]
+    );
+    res.json({ success: true, message: 'Stock status updated successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+const PORT = process.env.PORT || 5000;
 
 // POST ROUTE: RECEIVE ORDER
 app.post('/api/orders', async (req, res) => {
@@ -124,9 +156,20 @@ app.post('/api/orders', async (req, res) => {
         0
       ) + DELIVERY_CHARGE;
 
-    const orderId = Math.floor(
-      1000 + Math.random() * 9000
+    const [insertResult] = await db.execute(
+      `INSERT INTO orders
+        (customer_name, customer_phone, village, landmark, items, total_amount)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        customerName,
+        customerPhone,
+        village,
+        landmark || null,
+        JSON.stringify(items),
+        totalAmount
+      ]
     );
+    const orderId = insertResult.insertId;
 
     const orderData = {
       orderId,
@@ -163,8 +206,23 @@ app.get('/', (req, res) => {
   res.send('VillageMart Backend Running');
 });
 
-const PORT = process.env.PORT || 5000;
+
 
 app.listen(PORT, () => {
   console.log(`🚀 VillageMart Server running on port ${PORT}`);
 });
+const [result] = await db.execute(
+  `INSERT INTO orders
+    (customer_name, customer_phone, village, landmark, items, total_amount)
+   VALUES (?, ?, ?, ?, ?, ?)`,
+  [
+    customerName,
+    customerPhone,
+    village,
+    landmark || null,
+    JSON.stringify(items),
+    totalAmount
+  ]
+);
+
+const orderId = result.insertId;
