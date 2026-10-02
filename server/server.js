@@ -97,6 +97,28 @@ ${itemsList}
     console.error('Telegram alert failed:', err.message);
   }
 }
+// Auto-ensure table exists on backend startup
+async function ensureTablesExist() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        customer_name VARCHAR(150) NOT NULL,
+        customer_phone VARCHAR(30) NOT NULL,
+        village VARCHAR(120) NOT NULL,
+        landmark VARCHAR(255),
+        items JSON NOT NULL,
+        total_amount DECIMAL(10, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("Database ready: 'orders' table verified.");
+  } catch (err) {
+    console.error("Error creating tables:", err);
+  }
+}
+
+ensureTablesExist();
 
 // ==========================================
 // API ROUTES
