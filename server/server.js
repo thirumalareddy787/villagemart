@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const twilio = require('twilio');
 const db = require('./config/db');
 
@@ -49,7 +48,7 @@ async function triggerPhoneCall(order) {
   }
 }
 
-// FUNCTION: SEND TELEGRAM NOTIFICATION
+// FUNCTION: SEND TELEGRAM NOTIFICATION (Uses built-in global fetch)
 async function sendTelegramNotification(order) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
