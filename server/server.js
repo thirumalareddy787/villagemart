@@ -1,20 +1,27 @@
-
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
 const fetch = require('node-fetch');
 const twilio = require('twilio');
-require('dotenv').config();
+const db = require('./config/db');
 
-
+const app = express();
 const DELIVERY_CHARGE = 7;
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
 
 // Initialize Twilio Client
 const twilioClient =
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN
-    ? twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      )
+  process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+    ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
     : null;
+
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
 
 // FUNCTION: TRIGGER PHONE CALL
 async function triggerPhoneCall(order) {
@@ -74,34 +81,32 @@ ${itemsList}
 `;
 
   try {
-    await fetch(
-      `https://api.telegram.org/bot${token}/sendMessage`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'Markdown'
-        })
-      }
-    );
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'Markdown'
+      })
+    });
 
     console.log('Telegram alert sent successfully.');
   } catch (err) {
     console.error('Telegram alert failed:', err.message);
   }
 }
-// server/server.js
-const express = require('express');
-const cors = require('cors');
-const db = require('./config/db');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// ==========================================
+// API ROUTES
+// ==========================================
+
+// HEALTH CHECK ROUTE
+app.get('/', (req, res) => {
+  res.send('VillageMart Backend Running');
+});
 
 // 1. Route to get all products from MySQL
 app.get('/api/products', async (req, res) => {
@@ -129,19 +134,10 @@ app.patch('/api/products/:id/stock-status', async (req, res) => {
   }
 });
 
-
-const PORT = process.env.PORT || 5000;
-
-// POST ROUTE: RECEIVE ORDER
+// 3. POST ROUTE: RECEIVE ORDER
 app.post('/api/orders', async (req, res) => {
   try {
-    const {
-      customerName,
-      customerPhone,
-      village,
-      landmark,
-      items
-    } = req.body;
+    const { customerName, customerPhone, village, landmark, items } = req.body;
 
     if (!items || !Array.isArray(items)) {
       return res.status(400).json({
@@ -151,10 +147,8 @@ app.post('/api/orders', async (req, res) => {
     }
 
     const totalAmount =
-      items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      ) + DELIVERY_CHARGE;
+      items.reduce((sum, item) => sum + item.price * item.quantity, 0) +
+      DELIVERY_CHARGE;
 
     const [insertResult] = await db.execute(
       `INSERT INTO orders
@@ -169,6 +163,7 @@ app.post('/api/orders', async (req, res) => {
         totalAmount
       ]
     );
+
     const orderId = insertResult.insertId;
 
     const orderData = {
@@ -193,7 +188,6 @@ app.post('/api/orders', async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-
     res.status(500).json({
       success: false,
       message: 'Internal Server Error'
@@ -201,28 +195,9 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// HEALTH CHECK ROUTE
-app.get('/', (req, res) => {
-  res.send('VillageMart Backend Running');
-});
-
-
-
+// ==========================================
+// SERVER INITIALIZATION
+// ==========================================
 app.listen(PORT, () => {
   console.log(`🚀 VillageMart Server running on port ${PORT}`);
 });
-const [result] = await db.execute(
-  `INSERT INTO orders
-    (customer_name, customer_phone, village, landmark, items, total_amount)
-   VALUES (?, ?, ?, ?, ?, ?)`,
-  [
-    customerName,
-    customerPhone,
-    village,
-    landmark || null,
-    JSON.stringify(items),
-    totalAmount
-  ]
-);
-
-const orderId = result.insertId;
